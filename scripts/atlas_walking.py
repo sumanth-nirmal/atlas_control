@@ -61,7 +61,8 @@ class AtlasWalk():
         
         # k_effort is all 0s for full BDI controll of all joints.
         command.k_effort = [0] * 28
-        
+        print  command.k_effort
+
         # Observe next_step_index_needed to determine when to switch steps.
         self.step_index = state.walk_feedback.next_step_index_needed
         
@@ -150,13 +151,22 @@ class AtlasWalk():
         # X, Y position of foot
         X = R_foot * math.sin(theta)
         Y = (R - R_foot*math.cos(theta))
-        
+
+	print step_index
+	print X
+	print Y
+
         # Calculate orientation quaternion
         Q = quaternion_from_euler(0, 0, theta)
         pose = Pose()
         pose.position.x = self.robot_position.x + X
         pose.position.y = self.robot_position.y + Y
-        
+       	
+	print pose.position.x
+	print pose.position.y
+	print theta
+	print
+
         # The z position is observed for static walking, but the foot
         # will be placed onto the ground if the ground is lower than z
         pose.position.z = 0

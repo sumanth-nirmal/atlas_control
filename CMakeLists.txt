@@ -6,6 +6,10 @@ project(atlas_control)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   atlas_msgs
+  std_msgs
+  geometry_msgs
+  tf
+  roscpp
   rospy
 )
 
@@ -101,7 +105,7 @@ find_package(Boost REQUIRED COMPONENTS thread)
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES atlas_control
-  CATKIN_DEPENDS atlas_msgs rospy
+  CATKIN_DEPENDS atlas_msgs rospy   std_msgs geometry_msgs tf roscpp
   DEPENDS system_lib
 )
 

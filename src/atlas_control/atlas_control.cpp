@@ -2,17 +2,21 @@
 #include <boost/thread/lock_guard.hpp>
 #include "math.h"
 #include <tf/transform_datatypes.h>
-#include"atlas_control/atlas_control.h"
+#include "atlas_control/atlas_control.h"
+#include "stdio.h"
 
 AtlasControl::AtlasControl(ros::NodeHandle & nh):
      nh_(nh), step_index_(0)
 {
+    printf("start\n");
 
-    pub_atlas_sim_command_ = nh_.advertise<atlas_msgs::AtlasSimInterfaceCommand>("/atlas/atlas_sim_interface_command", 1, true);
-    pub_mode_ = nh_.advertise<std_msgs::String>("/atlas/mode", 1, true);
+    pub_atlas_sim_command_ = nh_.advertise<atlas_msgs::AtlasSimInterfaceCommand>("/atlas/atlas_sim_interface_command", 1);
+    pub_mode_ = nh_.advertise<std_msgs::String>("/atlas/mode", 1);
 
-    sub_atlas_sim_state_ = nh_.subscribe("/atlas/atlas_sim_interface_state", 1, &AtlasControl::callback_atlas_sim_state, this);
+    sub_atlas_sim_state_ = nh_.subscribe("/atlas/atlas_sim_interface_state", 10, &AtlasControl::callback_atlas_sim_state, this);
     sub_atlas_state_ = nh_.subscribe("/atlas/atlas_state", 1, &AtlasControl::callback_atlas_state, this);
+
+    printf("con done\n");
 }
 
 AtlasControl::~AtlasControl()
@@ -20,14 +24,22 @@ AtlasControl::~AtlasControl()
 
 }
 
-void AtlasControl::callback_atlas_sim_state(const atlas_msgs::AtlasSimInterfaceState& msg_sim_state)
+void AtlasControl::callback_atlas_sim_state(const atlas_msgs::AtlasSimInterfaceState msg_sim_state)
 {
+    printf("sub\n");
+
     {
         boost::lock_guard<boost::mutex> guard(sim_state_mtx_);
 
         // fetch the message
         atlas_sim_state_ = msg_sim_state;
+
+        // get the position
+        pos_x_ = atlas_sim_state_.pos_est.position.x;
+        pos_y_ = atlas_sim_state_.pos_est.position.y;
+        pos_z_ = atlas_sim_state_.pos_est.position.z;
     }
+
 
     //call the walk_primitive
     walk_primitive();
@@ -44,15 +56,24 @@ void AtlasControl::callback_atlas_state(const atlas_msgs::AtlasState &msg_state)
 
 void AtlasControl::walk_primitive(void)
 {
-    int is_right_foot;
+    int i,is_right_foot;
     long step_index;
 
-    atlas_sim_command_.behavior = WALK;
-    atlas_sim_command_.k_effort = 28;
+    printf("walk\n");
 
-    step_index_ = atlas_sim_state_.walk_feedback.next_step_index_needed;
+    atlas_sim_command_.behavior = 4; //WALK
 
-    for (int i = 0; i < 4; i++)
+    for (i=0;i<28;i++)
+    {
+      atlas_sim_command_.k_effort.push_back(0);
+    }
+
+    {
+        boost::lock_guard<boost::mutex> guard(sim_state_mtx_);
+        step_index_ = atlas_sim_state_.walk_feedback.next_step_index_needed;
+    }
+
+    for (i = 0; i < 4; i++)
     {
         step_index = step_index_ + i;
         is_right_foot = step_index % 2;
@@ -68,7 +89,7 @@ void AtlasControl::walk_primitive(void)
     pub_atlas_sim_command_.publish(atlas_sim_command_);
 }
 
-AtlasControl::calculate_pose (long step_index)
+geometry_msgs::Pose AtlasControl::calculate_pose (long step_index)
 {
 int is_right_foot, is_left_foot;
 long current_step;
@@ -85,39 +106,34 @@ current_step = step_index % 60;
 
 theta = current_step * M_PI/ 30;
 
-offset_dir = 1 - 2 * is_left_foot;
+offset_dir = 1 - (2 * is_left_foot);
 
 R_foot = R + offset_dir * W/2;
 
 X = R_foot * sin(theta);
 Y = (R - R_foot*cos(theta));
 
+printf("step: %d\n",step_index);
+printf ("X %f \n",X);
+printf ("Y %f \n",Y);
 
-tf::Quaternion q(quat.x, quat.y, quat.z, quat.w);
-tf::Matrix3x3 m(q);
-double roll, pitch, yaw;
-q.Quaternion(roll, pitch, yaw);
+tf::Quaternion q = tf::createQuaternionFromRPY(0, 0, theta);
 
-Q = quaternion_from_euler(0, 0, theta)
-pose = Pose()
-pose.position.x = self.robot_position.x + X
-pose.position.y = self.robot_position.y + Y
+geometry_msgs::Pose pose;
 
-print pose.position.x
-print pose.position.y
-print theta
-print
+pose.position.x = pos_x_ + X;
+pose.position.y = pos_y_ + Y;
+pose.position.z = 0;
 
-# The z position is observed for static walking, but the foot
-# will be placed onto the ground if the ground is lower than z
-pose.position.z = 0
+pose.orientation.x = q.getX();
+pose.orientation.y = q.getY();
+pose.orientation.z = q.getZ();
+pose.orientation.w = q.getW();
 
-pose.orientation.x = Q[0]
-pose.orientation.y = Q[1]
-pose.orientation.z = Q[2]
-pose.orientation.w = Q[3]
+printf ("x %f \n",pose.position.x);
+printf ("y %f \n",pose.position.y);
 
-return pose
+return pose;
 }
 
 int main(int argc, char* argv[]) {

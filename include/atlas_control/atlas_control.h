@@ -6,6 +6,7 @@
 #include "atlas_msgs/AtlasCommand.h"
 #include "atlas_msgs/AtlasState.h"
 #include "std_msgs/String.h"
+#include "geometry_msgs/Pose.h"
 
 
 class AtlasControl
@@ -43,12 +44,12 @@ private:
   atlas_msgs::AtlasState atlas_state_;
 
   //call backs
-  void callback_atlas_sim_state (const atlas_msgs::AtlasSimInterfaceState& msg_sim_state);
+  void callback_atlas_sim_state (const atlas_msgs::AtlasSimInterfaceState msg_sim_state);
   void callback_atlas_state (const atlas_msgs::AtlasState& msg_state);
 
  // mehtods
   void walk_primitive(void);
-  calculate_pose(long step_index);
+  geometry_msgs::Pose calculate_pose(long step_index);
 
   // mutex
   boost::mutex sim_state_mtx_, state_mtx_;
