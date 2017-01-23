@@ -2,7 +2,10 @@
 simple walking control for atlas robot based BDI Controllers
 
 - This is based on drcsim, check for [installation](http://gazebosim.org/tutorials?tut=drcsim_install&cat=drcsim)
-- 
+
+### For installing drcsim with gazebo7, follow below instructions:
+`sudo apt-get install gazebo7 drcsim7`
+
 
 ### To test this (with drcsim on inidgo)
 
